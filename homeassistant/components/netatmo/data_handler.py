@@ -11,8 +11,16 @@ from time import time
 from typing import Any
 
 import aiohttp
-import pyatmo
+from pyatmo import (
+    ApiError as NaApiError,
+    AsyncAccount as NaAsyncAccount,
+    Home as NaHome,
+    Module as NaModule,
+    NoDeviceError as NaNoDeviceError,
+    Room as NaRoom,
+)
 from pyatmo.modules.device_types import (
+    DEVICE_DESCRIPTION_MAP,
     DeviceCategory as NetatmoDeviceCategory,
     DeviceType as NetatmoDeviceType,
 )
@@ -43,12 +51,14 @@ from .const import (
     NETATMO_CREATE_ROOM_SENSOR,
     NETATMO_CREATE_SELECT,
     NETATMO_CREATE_SENSOR,
+    NETATMO_CREATE_SIREN,
     NETATMO_CREATE_SWITCH,
     NETATMO_CREATE_WEATHER_SENSOR,
     PLATFORMS,
     WEBHOOK_ACTIVATION,
     WEBHOOK_DEACTIVATION,
     WEBHOOK_NACAMERA_CONNECTION,
+    WEBHOOK_NACAMERAADV_CONNECTION,
     WEBHOOK_PUSH_TYPE,
 )
 
@@ -92,9 +102,10 @@ class NetatmoDevice:
     """Netatmo device class."""
 
     data_handler: NetatmoDataHandler
-    device: pyatmo.modules.Module
+    device: NaModule
     parent_id: str
     signal_name: str
+    description: str
 
 
 @dataclass
@@ -102,7 +113,7 @@ class NetatmoHome:
     """Netatmo home class."""
 
     data_handler: NetatmoDataHandler
-    home: pyatmo.Home
+    home: NaHome
     parent_id: str
     signal_name: str
 
@@ -112,7 +123,7 @@ class NetatmoRoom:
     """Netatmo room class."""
 
     data_handler: NetatmoDataHandler
-    room: pyatmo.Room
+    room: NaRoom
     parent_id: str
     signal_name: str
 
@@ -132,7 +143,7 @@ class NetatmoPublisher:
 class NetatmoDataHandler:
     """Manages the Netatmo data handling."""
 
-    account: pyatmo.AsyncAccount
+    account: NaAsyncAccount
     _interval_factor: int
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
@@ -140,6 +151,7 @@ class NetatmoDataHandler:
         self.hass = hass
         self.config_entry = config_entry
         self._auth = hass.data[DOMAIN][config_entry.entry_id][AUTH]
+        self.account = NaAsyncAccount(self._auth)
         self.publisher: dict[str, NetatmoPublisher] = {}
         self._queue: deque = deque()
         self._webhook: bool = False
@@ -167,8 +179,6 @@ class NetatmoDataHandler:
                 self.handle_event,
             )
         )
-
-        self.account = pyatmo.AsyncAccount(self._auth)
 
         await self.subscribe(ACCOUNT, ACCOUNT, None)
 
@@ -223,7 +233,10 @@ class NetatmoDataHandler:
             _LOGGER.debug("%s webhook unregistered", MANUFACTURER)
             self._webhook = False
 
-        elif event["data"][WEBHOOK_PUSH_TYPE] == WEBHOOK_NACAMERA_CONNECTION:
+        elif (
+            event["data"][WEBHOOK_PUSH_TYPE] == WEBHOOK_NACAMERA_CONNECTION
+            or event["data"][WEBHOOK_PUSH_TYPE] == WEBHOOK_NACAMERAADV_CONNECTION
+        ):
             _LOGGER.debug("%s camera reconnected", MANUFACTURER)
             self.async_force_update(ACCOUNT)
 
@@ -236,7 +249,7 @@ class NetatmoDataHandler:
                 **self.publisher[signal_name].kwargs
             )
 
-        except (pyatmo.NoDeviceError, pyatmo.ApiError) as err:
+        except (NaNoDeviceError, NaApiError) as err:
             _LOGGER.debug(err)
             has_error = True
 
@@ -340,10 +353,11 @@ class NetatmoDataHandler:
                         module,
                         AIR_CARE,
                         AIR_CARE,
+                        self.__get_type_specific_description_or_default(module),
                     ),
                 )
 
-    def setup_modules(self, home: pyatmo.Home, signal_home: str) -> None:
+    def setup_modules(self, home: NaHome, signal_home: str) -> None:
         """Set up modules."""
         netatmo_type_signal_map = {
             NetatmoDeviceCategory.camera: [
@@ -362,7 +376,9 @@ class NetatmoDataHandler:
             ],
             NetatmoDeviceCategory.meter: [NETATMO_CREATE_SENSOR],
             NetatmoDeviceCategory.fan: [NETATMO_CREATE_FAN],
+            NetatmoDeviceCategory.siren: [NETATMO_CREATE_SIREN],
         }
+
         for module in home.modules.values():
             if not module.device_category:
                 continue
@@ -376,6 +392,7 @@ class NetatmoDataHandler:
                         module,
                         home.entity_id,
                         signal_home,
+                        self.__get_type_specific_description_or_default(module),
                     ),
                 )
             if module.device_category is NetatmoDeviceCategory.weather:
@@ -387,10 +404,11 @@ class NetatmoDataHandler:
                         module,
                         home.entity_id,
                         WEATHER,
+                        self.__get_type_specific_description_or_default(module),
                     ),
                 )
 
-    def setup_rooms(self, home: pyatmo.Home, signal_home: str) -> None:
+    def setup_rooms(self, home: NaHome, signal_home: str) -> None:
         """Set up rooms."""
         for room in home.rooms.values():
             if NetatmoDeviceCategory.climate in room.features:
@@ -415,6 +433,7 @@ class NetatmoDataHandler:
                                 module,
                                 room.entity_id,
                                 signal_home,
+                                self.__get_type_specific_description_or_default(module),
                             ),
                         )
 
@@ -430,9 +449,7 @@ class NetatmoDataHandler:
                         ),
                     )
 
-    def setup_climate_schedule_select(
-        self, home: pyatmo.Home, signal_home: str
-    ) -> None:
+    def setup_climate_schedule_select(self, home: NaHome, signal_home: str) -> None:
         """Set up climate schedule per home."""
         if NetatmoDeviceCategory.climate in [
             next(iter(x)) for x in [room.features for room in home.rooms.values()] if x
@@ -451,3 +468,11 @@ class NetatmoDataHandler:
                     signal_home,
                 ),
             )
+
+    def __get_type_specific_description_or_default(
+        self, netatmo_module: NaModule
+    ) -> str:
+        result_description: tuple[str, str] = DEVICE_DESCRIPTION_MAP.get(
+            netatmo_module.device_type, ("Netatmo", "unknown")
+        )
+        return result_description[1]

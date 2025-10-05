@@ -9,21 +9,22 @@ import pyatmo
 from homeassistant.components import cloud
 from homeassistant.helpers import config_entry_oauth2_flow
 
-from .const import API_SCOPES_EXCLUDED_FROM_CLOUD
+from .const import API_SCOPES_ADDITIONAL_CLOUD, API_SCOPES_EXCLUDED_FROM_CLOUD
 
 
 def get_api_scopes(auth_implementation: str) -> Iterable[str]:
     """Return the Netatmo API scopes based on the auth implementation."""
-
+    existing_scopes: list[str] = pyatmo.const.ALL_SCOPES + API_SCOPES_ADDITIONAL_CLOUD
     if auth_implementation == cloud.DOMAIN:
         return set(
             {
                 scope
-                for scope in pyatmo.const.ALL_SCOPES
+                for scope in existing_scopes
                 if scope not in API_SCOPES_EXCLUDED_FROM_CLOUD
             }
         )
-    return sorted(pyatmo.const.ALL_SCOPES)
+
+    return sorted(existing_scopes)
 
 
 class AsyncConfigEntryNetatmoAuth(pyatmo.AbstractAsyncAuth):

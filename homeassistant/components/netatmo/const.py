@@ -18,6 +18,7 @@ PLATFORMS = [
     Platform.LIGHT,
     Platform.SELECT,
     Platform.SENSOR,
+    Platform.SIREN,
     Platform.SWITCH,
 ]
 
@@ -41,6 +42,13 @@ API_SCOPES_EXCLUDED_FROM_CLOUD = [
     "write_mhs1",
 ]
 
+API_SCOPES_ADDITIONAL_CLOUD: list[str] = [
+    "read_camerapro",
+    "write_camerapro",
+    "access_camerapro",
+]
+
+NETATMO_CREATE_SIREN = "netatmo_create_siren"
 NETATMO_CREATE_BATTERY = "netatmo_create_battery"
 NETATMO_CREATE_CAMERA = "netatmo_create_camera"
 NETATMO_CREATE_CAMERA_LIGHT = "netatmo_create_camera_light"
@@ -74,6 +82,7 @@ DATA_EVENTS = "netatmo_events"
 DATA_HOMES = "netatmo_homes"
 DATA_PERSONS = "netatmo_persons"
 DATA_SCHEDULES = "netatmo_schedules"
+DATA_SIRENS = "netatmo_sirens"
 
 NETATMO_EVENT = "netatmo_event"
 
@@ -122,6 +131,16 @@ EVENT_TYPE_CAMERA_PERSON = "person"
 EVENT_TYPE_CAMERA_PERSON_AWAY = "person_away"
 EVENT_TYPE_CAMERA_VEHICLE = "vehicle"
 EVENT_TYPE_LIGHT_MODE = "light_mode"
+EVENT_TYPE_DISCONNECTION = "disconnection"
+EVENT_TYPE_CAMERAADV_CLUSTER = "cluster"
+EVENT_TYPE_NEW_MODULE = "new_module"
+EVENT_TYPE_MODULE_CONNECT = "module_connect"
+EVENT_TYPE_MODULE_DISCONNECT = "module_disconnect"
+EVENT_TYPE_MODULE_LOW_BATTERY = "module_low_battery"
+EVENT_TYPE_MODULE_END_UPDATE = "module_end_update"
+EVENT_TYPE_SD = "sd"
+EVENT_TYPE_ALIM = "alim"
+
 # Door tags
 EVENT_TYPE_ALARM_STARTED = "alarm_started"
 EVENT_TYPE_DOOR_TAG_BIG_MOVE = "tag_big_move"
@@ -129,6 +148,10 @@ EVENT_TYPE_DOOR_TAG_OPEN = "tag_open"
 EVENT_TYPE_DOOR_TAG_SMALL_MOVE = "tag_small_move"
 EVENT_TYPE_OFF = "off"
 EVENT_TYPE_ON = "on"
+
+# Siren tags
+EVENT_TYPE_SIREN_SOUNDING = "siren_sounding"
+EVENT_TYPE_SIREN_TAMPERED = "siren_tampered"
 
 OUTDOOR_CAMERA_TRIGGERS = [
     EVENT_TYPE_CAMERA_ANIMAL,
@@ -141,7 +164,22 @@ INDOOR_CAMERA_TRIGGERS = [
     EVENT_TYPE_CAMERA_MOVEMENT,
     EVENT_TYPE_CAMERA_PERSON_AWAY,
     EVENT_TYPE_CAMERA_PERSON,
+    EVENT_TYPE_CAMERAADV_CLUSTER,
+    EVENT_TYPE_ON,
+    EVENT_TYPE_OFF,
+    EVENT_TYPE_DISCONNECTION,
+    EVENT_TYPE_NEW_MODULE,
+    EVENT_TYPE_MODULE_CONNECT,
+    EVENT_TYPE_MODULE_DISCONNECT,
+    EVENT_TYPE_MODULE_LOW_BATTERY,
+    EVENT_TYPE_MODULE_END_UPDATE,
+    EVENT_TYPE_SD,
 ]
+INDOOR_SIREN_TRIGGERS = [
+    EVENT_TYPE_SIREN_SOUNDING,
+    EVENT_TYPE_SIREN_TAMPERED,
+]
+
 DOOR_TAG_TRIGGERS = [
     EVENT_TYPE_DOOR_TAG_BIG_MOVE,
     EVENT_TYPE_DOOR_TAG_OPEN,
@@ -156,6 +194,7 @@ EVENT_ID_MAP = {
     EVENT_TYPE_ALARM_STARTED: "device_id",
     EVENT_TYPE_CAMERA_ANIMAL: "device_id",
     EVENT_TYPE_CAMERA_HUMAN: "device_id",
+    EVENT_TYPE_CAMERAADV_CLUSTER: "device_id",
     EVENT_TYPE_CAMERA_MOVEMENT: "device_id",
     EVENT_TYPE_CAMERA_OUTDOOR: "device_id",
     EVENT_TYPE_CAMERA_PERSON_AWAY: "device_id",
@@ -168,6 +207,14 @@ EVENT_ID_MAP = {
     EVENT_TYPE_LIGHT_MODE: "device_id",
     EVENT_TYPE_SET_POINT: "room_id",
     EVENT_TYPE_THERM_MODE: "home_id",
+    EVENT_TYPE_DISCONNECTION: "device_id",
+    EVENT_TYPE_NEW_MODULE: "device_id",
+    EVENT_TYPE_MODULE_CONNECT: "device_id",
+    EVENT_TYPE_MODULE_DISCONNECT: "device_id",
+    EVENT_TYPE_MODULE_LOW_BATTERY: "device_id",
+    EVENT_TYPE_MODULE_END_UPDATE: "device_id",
+    EVENT_TYPE_SD: "device_id",
+    EVENT_TYPE_ALIM: "device_id",
 }
 
 MODE_LIGHT_AUTO = "auto"
@@ -179,4 +226,5 @@ WEBHOOK_ACTIVATION = "webhook_activation"
 WEBHOOK_DEACTIVATION = "webhook_deactivation"
 WEBHOOK_LIGHT_MODE = "NOC-light_mode"
 WEBHOOK_NACAMERA_CONNECTION = "NACamera-connection"
+WEBHOOK_NACAMERAADV_CONNECTION = "NPC-connection"
 WEBHOOK_PUSH_TYPE = "push_type"

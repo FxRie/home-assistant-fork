@@ -7,7 +7,7 @@ import asyncio
 from collections import deque
 from collections.abc import Callable, Coroutine, Iterable, Mapping
 import dataclasses
-from enum import Enum, auto
+from enum import Enum, IntFlag, auto
 import functools as ft
 import logging
 import math
@@ -861,7 +861,7 @@ class Entity(
         return False
 
     @cached_property
-    def supported_features(self) -> int | None:
+    def supported_features(self) -> int | IntFlag | None:
         """Flag supported features."""
         return self._attr_supported_features
 

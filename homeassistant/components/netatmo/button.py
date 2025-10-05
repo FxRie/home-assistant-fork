@@ -43,7 +43,7 @@ class NetatmoCoverPreferredPositionButton(NetatmoModuleEntity, ButtonEntity):
     _attr_configuration_url = CONF_URL_CONTROL
     _attr_entity_registry_enabled_default = False
     _attr_translation_key = "preferred_position"
-    device: NaModules.Shutter
+    device: NaModules.Shutter  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def __init__(self, netatmo_device: NetatmoDevice) -> None:
         """Initialize the Netatmo device."""
