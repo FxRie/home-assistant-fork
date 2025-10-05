@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from typing import Any, cast, override
 
 import aiohttp
 from pyatmo import ApiError as NetatmoApiError, modules as NaModules
@@ -27,16 +27,16 @@ from .const import (
     DATA_CAMERAS,
     DATA_EVENTS,
     DOMAIN,
-    EVENT_TYPE_LIGHT_MODE,
-    EVENT_TYPE_OFF,
-    EVENT_TYPE_ON,
+    INDOOR_CAMERA_TRIGGERS,
     MANUFACTURER,
     NETATMO_CREATE_CAMERA,
+    OUTDOOR_CAMERA_TRIGGERS,
     SERVICE_SET_CAMERA_LIGHT,
     SERVICE_SET_PERSON_AWAY,
     SERVICE_SET_PERSONS_HOME,
     WEBHOOK_LIGHT_MODE,
     WEBHOOK_NACAMERA_CONNECTION,
+    WEBHOOK_NACAMERAADV_CONNECTION,
     WEBHOOK_PUSH_TYPE,
 )
 from .data_handler import EVENT, HOME, SIGNAL_NAME, NetatmoDevice
@@ -85,10 +85,12 @@ async def async_setup_entry(
 class NetatmoCamera(NetatmoModuleEntity, Camera):
     """Representation of a Netatmo camera."""
 
+    device: NaModules.Camera
+    _light_state = None
+
     _attr_brand = MANUFACTURER
     _attr_supported_features = CameraEntityFeature.STREAM
     _attr_configuration_url = CONF_URL_SECURITY
-    device: NaModules.Camera
     _quality = DEFAULT_QUALITY
     _monitoring: bool | None = None
     _attr_name = None
@@ -102,7 +104,6 @@ class NetatmoCamera(NetatmoModuleEntity, Camera):
         super().__init__(netatmo_device)
 
         self._attr_unique_id = f"{netatmo_device.device.entity_id}-{self.device_type}"
-        self._light_state = None
 
         self._publishers.extend(
             [
@@ -123,7 +124,7 @@ class NetatmoCamera(NetatmoModuleEntity, Camera):
         """Entity created."""
         await super().async_added_to_hass()
 
-        for event_type in (EVENT_TYPE_LIGHT_MODE, EVENT_TYPE_OFF, EVENT_TYPE_ON):
+        for event_type in INDOOR_CAMERA_TRIGGERS + OUTDOOR_CAMERA_TRIGGERS:
             self.async_on_remove(
                 async_dispatcher_connect(
                     self.hass,
@@ -146,12 +147,18 @@ class NetatmoCamera(NetatmoModuleEntity, Camera):
             data["home_id"] == self.home.entity_id
             and data["camera_id"] == self.device.entity_id
         ):
-            if data[WEBHOOK_PUSH_TYPE] in ("NACamera-off", "NACamera-disconnection"):
+            if data[WEBHOOK_PUSH_TYPE] in (
+                "NACamera-off",
+                "NACamera-disconnection",
+            ) or data[WEBHOOK_PUSH_TYPE] in ("NPC-off", "NPC-disconnection"):
                 self._attr_is_streaming = False
                 self._monitoring = False
             elif data[WEBHOOK_PUSH_TYPE] in (
                 "NACamera-on",
                 WEBHOOK_NACAMERA_CONNECTION,
+            ) or data[WEBHOOK_PUSH_TYPE] in (
+                "NPC-on",
+                WEBHOOK_NACAMERAADV_CONNECTION,
             ):
                 self._attr_is_streaming = True
                 self._monitoring = True
@@ -202,8 +209,8 @@ class NetatmoCamera(NetatmoModuleEntity, Camera):
             await self.device.async_update_camera_urls()
 
         if self.device.local_url:
-            return f"{self.device.local_url}/live/files/{self._quality}/index.m3u8"
-        return f"{self.device.vpn_url}/live/files/{self._quality}/index.m3u8"
+            return f"{self.device.local_url}/live/indexlocal.m3u8"
+        return f"{self.device.vpn_url}/live/index.m3u8"
 
     @callback
     def async_update_callback(self) -> None:
