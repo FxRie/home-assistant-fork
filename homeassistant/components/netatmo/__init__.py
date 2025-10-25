@@ -42,6 +42,7 @@ from .const import (
     DATA_HOMES,
     DATA_PERSONS,
     DATA_SCHEDULES,
+    DATA_SIRENS,
     DOMAIN,
     PLATFORMS,
     WEBHOOK_DEACTIVATION,
@@ -57,7 +58,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 MAX_WEBHOOK_RETRIES = 3
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, _: ConfigType) -> bool:
     """Set up the Netatmo component."""
     hass.data[DOMAIN] = {
         DATA_PERSONS: {},
@@ -66,6 +67,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         DATA_HOMES: {},
         DATA_EVENTS: {},
         DATA_CAMERAS: {},
+        DATA_SIRENS: {},
     }
 
     return True
@@ -114,9 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id][DATA_HANDLER] = data_handler
     await data_handler.async_setup()
 
-    async def unregister_webhook(
-        _: Any,
-    ) -> None:
+    async def unregister_webhook(_: Any) -> None:
         if CONF_WEBHOOK_ID not in entry.data:
             return
         _LOGGER.debug("Unregister Netatmo webhook (%s)", entry.data[CONF_WEBHOOK_ID])
@@ -133,9 +133,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "No webhook to be dropped for %s", entry.data[CONF_WEBHOOK_ID]
             )
 
-    async def register_webhook(
-        _: Any,
-    ) -> None:
+    async def register_webhook(_: Any) -> None:
         if CONF_WEBHOOK_ID not in entry.data:
             data = {**entry.data, CONF_WEBHOOK_ID: secrets.token_hex()}
             hass.config_entries.async_update_entry(entry, data=data)
@@ -166,7 +164,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             await hass.data[DOMAIN][entry.entry_id][AUTH].async_addwebhook(webhook_url)
             _LOGGER.debug("Register Netatmo webhook: %s", webhook_url)
         except pyatmo.ApiError as err:
-            _LOGGER.error("Error during webhook registration - %s", err)
+            _LOGGER.error(
+                "Error during webhook registration - %s for URL %s",
+                err,
+                webhook_url,
+                stack_info=True,
+            )
         else:
             entry.async_on_unload(
                 hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, unregister_webhook)
