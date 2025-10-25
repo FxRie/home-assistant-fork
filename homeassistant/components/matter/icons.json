@@ -123,6 +123,9 @@
       "evse_fault_state": {
         "default": "mdi:ev-station"
       },
+      "operational_error": {
+        "default": "mdi:alert-circle"
+      },
       "pump_control_mode": {
         "default": "mdi:pipe-wrench"
       },
@@ -144,6 +147,13 @@
         "state": {
           "on": "mdi:lock",
           "off": "mdi:lock-off"
+        }
+      },
+      "speaker_mute": {
+        "default": "mdi:volume-high",
+        "state": {
+          "on": "mdi:volume-mute",
+          "off": "mdi:volume-high"
         }
       },
       "evse_charging_switch": {
